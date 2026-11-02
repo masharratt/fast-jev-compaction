@@ -1,3 +1,34 @@
+# masharratt fork
+
+Based on [Lexus2016/fast-jev-compaction](https://github.com/Lexus2016/fast-jev-compaction)
+at `ea240ed` (security-reviewed 2026-11-01), plus:
+
+- `scripts/install-org-mod.sh`: installs the plugin as an **organization mod**.
+- The `session.compact` catch handler redacts secrets in the error text it logs.
+
+## Why an organization mod
+
+Since Claude Code 2.1.299 the built-in guard `cc-plugin-sec-default` skips a
+user-installed plugin's `session.compact` hook whenever the machine has managed
+settings (claude.ai admin-console settings count) or the login is a Team or
+Enterprise organization. The debug log shows
+`session.compact bypassed by cc-plugin-sec-default (tier user)` and the built-in
+summary runs instead. No change to the plugin's code can get past this; the
+supported route is to install it so it counts as the organization's own mod
+(loaded in place from a root-owned local directory marketplace that managed
+settings name).
+
+1. `sudo scripts/install-org-mod.sh` (copies runtime files to
+   `/opt/claude-org-plugins`, root-owned).
+2. Add the keys it prints to managed settings (admin console).
+3. Disable the user-scope copy: `claude plugin disable fast-jev-compaction@fast-jev-compaction`.
+4. Move any `pluginConfigs` options to the new id `fast-jev-compaction@org-local`.
+5. Check: `claude -p /compact --resume <id> --debug-file /tmp/d.txt` and
+   `grep fast-jev /tmp/d.txt` shows no `bypassed` line.
+
+Managed settings reach every member of the organization; the mod only loads on
+machines that have the directory.
+
 # Fork notes and audit log
 
 This is a maintained fork of

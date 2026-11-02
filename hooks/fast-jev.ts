@@ -466,7 +466,11 @@ export const register: Register = (on: On, options: PluginOptions) => {
     // The hook threw past its own guard or overran the host's budget. Without
     // this handler the hook would count as absent and every trigger would get
     // the built-in summary; the same policy as a Jev failure applies instead.
-    const why = `hook ${next.error.kind}${next.error.message ? `: ${next.error.message.slice(0, 160)}` : ''}`;
+    // Redact before cutting, so a cut cannot leave half a secret unrecognized.
+    const message = next.error.message
+      ? redactSecrets(next.error.message, configured.apiKey ? [configured.apiKey] : []).text.slice(0, 160)
+      : '';
+    const why = `hook ${next.error.kind}${message ? `: ${message}` : ''}`;
     if (mayUseBuiltin(event.trigger, configured.builtinFallback)) {
       $.ui.log(`fallback to built-in summary (${why})`);
       return next(event);

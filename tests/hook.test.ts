@@ -618,6 +618,22 @@ describe('session.compact catch handler', () => {
 
     expect(await caught('manual', 'throw', { builtinFallback: 'always' }).result).toEqual({ messages: [] });
   });
+
+  // Review finding: the catch handler wrote the raw error text into the log and
+  // the transcript's skip notice without redaction.
+  it('redacts secrets in the error text it logs and skips with', async () => {
+    const secret = ['abcd', 'EFGH', 'ijkl', 'MNOP', 'qrst', '1234'].join('');
+    const handler = registeredHooks().get('catch:session.compact')!;
+    const logs: string[] = [];
+    const next = Object.assign(vi.fn(async () => ({ messages: [] })), {
+      error: { kind: 'throw', message: `request failed: Authorization: Bearer ${secret}`, budget: 30_000 },
+      called: false,
+    });
+    const out = await handler({ ui: { log: (t: string) => logs.push(t) } }, { trigger: 'manual', messages: [] }, next);
+    const everything = JSON.stringify([out, logs]);
+    expect(everything).not.toContain(secret);
+    expect(everything).toContain('[REDACTED]');
+  });
 });
 
 describe('compaction when stubs do not free enough', () => {
